@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kestrel-redteam"
+version = "0.1.0"
+description = "Test AI agents for prompt injection."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "typer",
+    "httpx",
+    "pydantic>=2",
+    "pyyaml",
+    "rich",
+    "jinja2",
+]
+
+[project.optional-dependencies]
+examples = ["fastapi", "uvicorn", "anthropic"]
+dev = ["pytest", "build"]
+
+[project.scripts]
+kestrel = "kestrel_redteam.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/kestrel_redteam"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["examples"]
