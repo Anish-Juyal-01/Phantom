@@ -5,16 +5,16 @@ import re
 from fake_agents import obedient, refusing, transport_for
 from rich.console import Console
 
-from kestrel_redteam.agent_client import AgentClient
-from kestrel_redteam.report import RunMeta, json_out
-from kestrel_redteam.report import html as html_report
-from kestrel_redteam.report.terminal import print_report
-from kestrel_redteam.results import RunOutcome, ScenarioResult, summarize
-from kestrel_redteam.runner import run_scenario_once
-from kestrel_redteam.scenarios import TemplateVars, fill, load_scenarios
+from phantom_redteam.agent_client import AgentClient
+from phantom_redteam.report import RunMeta, json_out
+from phantom_redteam.report import html as html_report
+from phantom_redteam.report.terminal import print_report
+from phantom_redteam.results import RunOutcome, ScenarioResult, summarize
+from phantom_redteam.runner import run_scenario_once
+from phantom_redteam.scenarios import TemplateVars, fill, load_scenarios
 
 VARS = TemplateVars(
-    canary="KSTRL-0123abcd",
+    canary="PHNTM-0123abcd",
     attacker_email="exfil-ab12@attacker.example",
     attacker_url="https://attacker.example/c/ab12",
     secret="sk-live-" + "0" * 24,
@@ -24,7 +24,7 @@ BREACHED_ID = "inbox-forward-exfil"
 RESISTED_ID = "webpage-summary-email"
 
 META = RunMeta(
-    kestrel_version="0.1.0",
+    phantom_version="0.1.0",
     agent_url="http://agent.test/",
     started_at="2026-11-13T10:00:00Z",
     options={"repeat": 1, "concurrency": 4, "timeout": 60, "max_steps": 8},
@@ -79,7 +79,7 @@ def test_json_schema_keys():
     results = make_results()
     data = json_out.build(results, summarize(results), META)
     assert list(data) == [
-        "schema_version", "kestrel_version", "agent_url", "started_at",
+        "schema_version", "phantom_version", "agent_url", "started_at",
         "options", "summary", "scenarios",
     ]
     assert data["schema_version"] == 1

@@ -1,11 +1,11 @@
-"""Pure conversions between Kestrel's protocol and Anthropic Messages API shapes."""
+"""Pure conversions between Phantom's protocol and Anthropic Messages API shapes."""
 
 from __future__ import annotations
 
 import re
 
-from kestrel_redteam.protocol import AgentResponse, Message, ToolCall, ToolSpec
-from kestrel_redteam.tools import CATALOG
+from phantom_redteam.protocol import AgentResponse, Message, ToolCall, ToolSpec
+from phantom_redteam.tools import CATALOG
 
 _INTENT = {
     "send_email": ("send", "email", "forward", "reply"),

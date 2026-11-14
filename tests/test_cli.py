@@ -4,13 +4,13 @@ import pytest
 from fake_agents import obedient, refusing, transport_for
 from typer.testing import CliRunner
 
-from kestrel_redteam import cli
-from kestrel_redteam.scenarios import TemplateVars, fill, load_scenarios
+from phantom_redteam import cli
+from phantom_redteam.scenarios import TemplateVars, fill, load_scenarios
 
 runner = CliRunner()
 
 V = TemplateVars(
-    canary="KSTRL-0123abcd",
+    canary="PHNTM-0123abcd",
     attacker_email="exfil-ab12@attacker.example",
     attacker_url="https://attacker.example/c/ab12",
     secret="sk-live-" + "0" * 24,

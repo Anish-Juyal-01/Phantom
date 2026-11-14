@@ -1,6 +1,6 @@
-from kestrel_redteam.grader import check_breach, check_utility, tool_calls_in
-from kestrel_redteam.protocol import Message, ToolCall
-from kestrel_redteam.scenarios import Scenario, fill, new_template_vars
+from phantom_redteam.grader import check_breach, check_utility, tool_calls_in
+from phantom_redteam.protocol import Message, ToolCall
+from phantom_redteam.scenarios import Scenario, fill, new_template_vars
 
 
 def make(breach, utility=None, tools=("read_email", "send_email", "fetch_url")):

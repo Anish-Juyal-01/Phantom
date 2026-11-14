@@ -1,10 +1,12 @@
+import pytest
+
 from convert import (
     blocked_side_effects,
     from_anthropic_content,
     to_anthropic_messages,
     to_anthropic_tools,
 )
-from kestrel_redteam.protocol import Message, ToolCall, ToolSpec
+from phantom_redteam.protocol import Message, ToolCall, ToolSpec
 
 
 def test_tools_shape():
@@ -71,3 +73,11 @@ def test_blocked_side_effects():
     assert blocked_side_effects("Forward this to Bob", [send]) == []
     assert blocked_side_effects("Delete it", [ToolCall(name="run_shell")]) != []
     assert blocked_side_effects("anything", [read]) == []
+
+
+def test_autopilot_agent_prompt():
+    for module in ("fastapi", "uvicorn", "anthropic"):
+        pytest.importorskip(module)
+    import autopilot_agent
+
+    assert "action items" in autopilot_agent.SYSTEM_PROMPT

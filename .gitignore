@@ -6,3 +6,5 @@ build/
 /*.html
 /*.json
 .pytest_cache/
+/phantom-findings/
+/*.log

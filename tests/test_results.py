@@ -1,5 +1,5 @@
-from kestrel_redteam.results import RunOutcome, ScenarioResult, summarize
-from kestrel_redteam.scenarios import Scenario
+from phantom_redteam.results import RunOutcome, ScenarioResult, summarize
+from phantom_redteam.scenarios import Scenario
 
 
 def scen(sid="s", category="data-exfiltration", utility=True):

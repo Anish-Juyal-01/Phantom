@@ -1,6 +1,6 @@
 import pytest
 
-from kestrel_redteam.tools import CATALOG, UnknownToolError, execute_tool, tool_specs
+from phantom_redteam.tools import CATALOG, UnknownToolError, execute_tool, tool_specs
 
 
 def test_catalog_has_ten_tools():

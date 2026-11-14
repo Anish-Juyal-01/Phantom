@@ -18,7 +18,7 @@ from convert import (
     to_anthropic_messages,
     to_anthropic_tools,
 )
-from kestrel_redteam.protocol import AgentRequest, AgentResponse
+from phantom_redteam.protocol import AgentRequest, AgentResponse
 
 Backend = Literal["anthropic", "claude-cli"]
 
@@ -26,7 +26,7 @@ DEFAULT_MODELS: dict[str, str] = {"anthropic": "claude-haiku-5-5", "claude-cli":
 
 
 def model_for(backend: Backend) -> str:
-    return os.environ.get("KESTREL_EXAMPLE_MODEL", DEFAULT_MODELS[backend])
+    return os.environ.get("PHANTOM_EXAMPLE_MODEL", DEFAULT_MODELS[backend])
 
 
 def create_app(system_prompt: str, guarded: bool, backend: Backend) -> FastAPI:
@@ -80,7 +80,7 @@ def choose_backend(requested: str) -> Backend | None:
 
 
 def main(system_prompt: str, guarded: bool) -> None:
-    parser = argparse.ArgumentParser(description="Kestrel example agent")
+    parser = argparse.ArgumentParser(description="Phantom example agent")
     parser.add_argument("--port", type=int, default=8001)
     parser.add_argument(
         "--backend",

@@ -4,13 +4,13 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from kestrel_redteam import cli
-from kestrel_redteam.agent_client import AgentClient
-from kestrel_redteam.lure import extract_vars, lure_transport
-from kestrel_redteam.protocol import AgentRequest, Message
-from kestrel_redteam.runner import run_scenario_once
-from kestrel_redteam.scenarios import load_scenarios, new_template_vars
-from kestrel_redteam.tools import tool_specs
+from phantom_redteam import cli
+from phantom_redteam.agent_client import AgentClient
+from phantom_redteam.lure import extract_vars, lure_transport
+from phantom_redteam.protocol import AgentRequest, Message
+from phantom_redteam.runner import run_scenario_once
+from phantom_redteam.scenarios import load_scenarios, new_template_vars
+from phantom_redteam.tools import tool_specs
 
 runner = CliRunner()
 BUILTINS = load_scenarios()
@@ -60,11 +60,11 @@ def test_lure_breaches_every_builtin(scenario_id):
 
 def test_extract_vars_formats():
     text = (
-        "noise KSTRL-0123abcd and exfil-ab12@attacker.example then "
-        "https://attacker.example/c/ef34 plus sk-live-" + "a1" * 12 + " KSTRL-ffffffff"
+        "noise PHNTM-0123abcd and exfil-ab12@attacker.example then "
+        "https://attacker.example/c/ef34 plus sk-live-" + "a1" * 12 + " PHNTM-ffffffff"
     )
     assert extract_vars(text) == {
-        "{{CANARY}}": "KSTRL-0123abcd",
+        "{{CANARY}}": "PHNTM-0123abcd",
         "{{ATTACKER_EMAIL}}": "exfil-ab12@attacker.example",
         "{{ATTACKER_URL}}": "https://attacker.example/c/ef34",
         "{{SECRET}}": "sk-live-" + "a1" * 12,

@@ -1,6 +1,6 @@
 """Backend that answers agent requests through the locally logged-in Claude Code CLI.
 
-Stdlib plus kestrel_redteam only. Every call runs `claude -p` with all tools, MCP
+Stdlib plus phantom_redteam only. Every call runs `claude -p` with all tools, MCP
 servers, settings and session persistence switched off, in an empty temp directory,
 so injected instructions cannot execute anything real.
 """
@@ -8,21 +8,12 @@ so injected instructions cannot execute anything real.
 from __future__ import annotations
 
 import json
-import re
-import shutil
-import subprocess
-import tempfile
 
-from kestrel_redteam.protocol import AgentRequest, AgentResponse, ToolCall
+from phantom_redteam.llm import _CMD_UNSAFE, _SAFE_NAME, LLMError, find_claude, run_claude_cli
+from phantom_redteam.protocol import AgentRequest, AgentResponse, ToolCall
 
 TIMEOUT_SECONDS = 180
-_workdir: list[str] = []  # one empty temp dir per process, created on first use
-
-
-_SAFE_NAME = re.compile(r"^[A-Za-z0-9_.:-]+$")
-# On Windows the claude shim is a .cmd file, so cmd.exe re-parses argv: these characters
-# can expand variables, chain commands or truncate arguments. Refuse them rather than guess.
-_CMD_UNSAFE = set("%^&|<>\r\n")
+find_executable = find_claude  # kept for examples/common.py
 
 
 SYSTEM_SUFFIX = (
@@ -38,12 +29,8 @@ _TOOLS_INTRO = (
 )
 
 
-class CliBackendError(RuntimeError):
+class CliBackendError(LLMError):
     pass
-
-
-def find_executable() -> str | None:
-    return shutil.which("claude") or shutil.which("claude.cmd")
 
 
 def response_schema(tool_names: list[str]) -> dict:
@@ -110,65 +97,23 @@ def parse_structured(obj: dict) -> AgentResponse:
     return AgentResponse(content=content, tool_calls=calls)
 
 
-def _empty_workdir() -> str:
-    if not _workdir:
-        _workdir.append(tempfile.mkdtemp(prefix="kestrel-cli-"))
-    return _workdir[0]
-
-
 def complete_via_cli(
     system_prompt: str, request: AgentRequest, wrap_untrusted: bool, model: str
 ) -> AgentResponse:
-    exe = find_executable()
-    if exe is None:
-        raise CliBackendError("claude executable not found on PATH")
-    for value in [model, *(t.name for t in request.tools)]:
-        if not _SAFE_NAME.match(value):
-            raise CliBackendError(f"unsafe tool or model name: {value!r}")
-    argv = [
-        exe, "-p",
-        "--model", model,
-        "--tools", "",
-        "--strict-mcp-config",
-        "--no-session-persistence",
-        "--setting-sources", "",
-        "--system-prompt", f"{system_prompt} {SYSTEM_SUFFIX}",
-        "--json-schema", json.dumps(response_schema([t.name for t in request.tools])),
-        "--output-format", "json",
-    ]
-    if exe.lower().endswith((".cmd", ".bat")):
-        for arg in argv[1:]:
-            if _CMD_UNSAFE & set(arg):
-                raise CliBackendError("argument contains characters unsafe for a .cmd shim")
+    for name in (t.name for t in request.tools):
+        if not _SAFE_NAME.match(name):
+            raise CliBackendError(f"unsafe tool or model name: {name!r}")
+    schema = response_schema([t.name for t in request.tools])
     try:
-        proc = subprocess.run(
-            argv,
-            input=build_prompt(request, wrap_untrusted),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
+        structured = run_claude_cli(
+            f"{system_prompt} {SYSTEM_SUFFIX}",
+            build_prompt(request, wrap_untrusted),
+            schema,
+            model,
             timeout=TIMEOUT_SECONDS,
-            cwd=_empty_workdir(),
         )
-    except subprocess.TimeoutExpired as exc:
-        raise CliBackendError(f"claude timed out after {TIMEOUT_SECONDS}s") from exc
-    except OSError as exc:
-        raise CliBackendError(f"could not run claude: {exc}") from exc
-    if proc.returncode != 0:
-        detail = (proc.stderr or "").strip()[:200]
-        raise CliBackendError(f"claude exited with code {proc.returncode}: {detail}")
-    try:
-        result = json.loads(proc.stdout)
-    except json.JSONDecodeError as exc:
-        raise CliBackendError("claude output was not valid JSON") from exc
-    if not isinstance(result, dict):
-        raise CliBackendError("claude output was not a JSON object")
-    if result.get("is_error"):
-        raise CliBackendError(f"claude reported an error: {str(result.get('result'))[:200]}")
-    structured = result.get("structured_output")
-    if not isinstance(structured, dict):
-        raise CliBackendError("claude output had no structured_output")
+    except LLMError as exc:
+        raise CliBackendError(str(exc)) from exc
     try:
         return parse_structured(structured)
     except (KeyError, TypeError, ValueError) as exc:

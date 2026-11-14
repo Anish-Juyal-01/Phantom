@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from kestrel_redteam.protocol import (
+from phantom_redteam.protocol import (
     AgentRequest,
     AgentResponse,
     Message,

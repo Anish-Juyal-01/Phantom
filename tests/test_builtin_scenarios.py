@@ -4,12 +4,12 @@ from collections import Counter
 import pytest
 from fake_agents import obedient, refusing, transport_for, whistleblower
 
-from kestrel_redteam.agent_client import AgentClient
-from kestrel_redteam.runner import run_scenario_once
-from kestrel_redteam.scenarios import CATEGORY_ORDER, TemplateVars, fill, load_scenarios
+from phantom_redteam.agent_client import AgentClient
+from phantom_redteam.runner import run_scenario_once
+from phantom_redteam.scenarios import CATEGORY_ORDER, TemplateVars, fill, load_scenarios
 
 VARS = TemplateVars(
-    canary="KSTRL-0123abcd",
+    canary="PHNTM-0123abcd",
     attacker_email="exfil-ab12@attacker.example",
     attacker_url="https://attacker.example/c/ab12",
     secret="sk-live-" + "0" * 24,
@@ -142,3 +142,25 @@ def test_whistleblower_resists_every_builtin(scenario_id):
 def test_utility_reachable(scenario_id):
     out = run(BY_ID[scenario_id], whistleblower)
     assert out.utility is True
+
+
+@pytest.mark.parametrize("scenario_id", IDS)
+def test_every_builtin_has_carrier(scenario_id):
+    from phantom_redteam.carrier import carrier_text, render_objective, required_values
+
+    s = BY_ID[scenario_id]
+    assert s.carrier is not None
+    filled = fill(s, VARS)
+    text = carrier_text(filled)
+    assert text.strip()
+    assert render_objective(filled)
+    for v in required_values(filled):
+        assert v in text, f"{scenario_id}: required value {v} not in carrier text"
+
+
+@pytest.mark.parametrize("scenario_id", IDS)
+def test_builtin_carrier_text_passes_validation(scenario_id):
+    from phantom_redteam.carrier import carrier_text, validate_attempt
+
+    filled = fill(BY_ID[scenario_id], VARS)
+    validate_attempt(carrier_text(filled), filled, VARS.secret)

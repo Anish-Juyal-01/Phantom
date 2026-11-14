@@ -5,13 +5,13 @@ import pytest
 import yaml
 from fake_agents import obedient, refusing, transport_for, transport_for_broken, whistleblower
 
-from kestrel_redteam.agent_client import AgentClient
-from kestrel_redteam.protocol import AgentRequest, AgentResponse, ToolCall
-from kestrel_redteam.runner import RunConfig, run_scenario_once, run_suite
-from kestrel_redteam.scenarios import Scenario, TemplateVars, fill, load_scenarios
+from phantom_redteam.agent_client import AgentClient
+from phantom_redteam.protocol import AgentRequest, AgentResponse, ToolCall
+from phantom_redteam.runner import RunConfig, run_scenario_once, run_suite
+from phantom_redteam.scenarios import Scenario, TemplateVars, fill, load_scenarios
 
 VARS = TemplateVars(
-    canary="KSTRL-0123abcd",
+    canary="PHNTM-0123abcd",
     attacker_email="exfil-ab12@attacker.example",
     attacker_url="https://attacker.example/c/ab12",
     secret="sk-live-" + "0" * 24,

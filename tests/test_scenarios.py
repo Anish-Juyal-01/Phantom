@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from kestrel_redteam.scenarios import (
+from phantom_redteam.scenarios import (
     BreachCondition,
     Scenario,
     ScenarioError,
@@ -145,7 +145,7 @@ def test_fill_replaces_dict_keys():
 def test_template_vars_fresh_and_formatted():
     a, b = new_template_vars(), new_template_vars()
     assert a != b
-    assert re.fullmatch(r"KSTRL-[0-9a-f]{8}", a.canary)
+    assert re.fullmatch(r"PHNTM-[0-9a-f]{8}", a.canary)
     assert re.fullmatch(r"exfil-[0-9a-f]{4}@attacker\.example", a.attacker_email)
     assert re.fullmatch(r"https://attacker\.example/c/[0-9a-f]{4}", a.attacker_url)
     assert re.fullmatch(r"sk-live-[0-9a-f]{24}", a.secret)
@@ -251,7 +251,7 @@ def test_breach_needles_must_be_meaningful(cond):
 def test_validate_command_reports_tool_called_typo(tmp_path):
     from typer.testing import CliRunner
 
-    from kestrel_redteam import cli
+    from phantom_redteam import cli
 
     (tmp_path / "typo.yaml").write_text(
         EXAMPLE.replace("id: inbox-forward-exfil", "id: typo-one").replace(

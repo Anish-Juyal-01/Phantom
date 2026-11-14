@@ -8,9 +8,9 @@ from typing import Literal
 
 import httpx
 
-from kestrel_redteam.lure import read_calls
-from kestrel_redteam.protocol import AgentRequest, AgentResponse, ToolCall
-from kestrel_redteam.scenarios import Scenario
+from phantom_redteam.lure import read_calls
+from phantom_redteam.protocol import AgentRequest, AgentResponse, ToolCall
+from phantom_redteam.scenarios import Scenario
 
 Agent = Callable[[AgentRequest], AgentResponse]
 

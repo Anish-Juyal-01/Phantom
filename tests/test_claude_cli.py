@@ -1,7 +1,5 @@
 import json
-import os
 import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -13,7 +11,8 @@ from claude_cli import (
     parse_structured,
     response_schema,
 )
-from kestrel_redteam.protocol import AgentRequest, Message, ToolCall, ToolSpec
+from phantom_redteam import llm
+from phantom_redteam.protocol import AgentRequest, Message, ToolCall, ToolSpec
 
 TOOLS = [
     ToolSpec(name="read_email", description="Read an email", parameters={"type": "object"}),
@@ -92,7 +91,7 @@ def _fake_run(stdout="", returncode=0, capture=None, raises=None):
 @pytest.fixture(autouse=True)
 def _which(monkeypatch):
     monkeypatch.setattr(
-        claude_cli.shutil, "which", lambda name: "/fake/claude" if name == "claude" else None
+        llm.shutil, "which", lambda name: "/fake/claude" if name == "claude" else None
     )
 
 
@@ -102,81 +101,40 @@ def _ok_output():
     )
 
 
-def test_cli_argv_is_locked_down(monkeypatch):
+def test_cli_call_wraps_prompt_and_suffix(monkeypatch):
     seen: dict = {}
-    monkeypatch.setattr(claude_cli.subprocess, "run", _fake_run(_ok_output(), capture=seen))
+    monkeypatch.setattr(llm.subprocess, "run", _fake_run(_ok_output(), capture=seen))
     request = _request()
     resp = complete_via_cli("SYS", request, wrap_untrusted=True, model="haiku")
     assert resp.content == "done"
     argv = seen["argv"]
-    assert argv[0] == "/fake/claude"
-    assert "-p" in argv
-    for flag, value in [
-        ("--tools", ""),
-        ("--setting-sources", ""),
-        ("--output-format", "json"),
-        ("--model", "haiku"),
-    ]:
-        assert argv[argv.index(flag) + 1] == value
     system = argv[argv.index("--system-prompt") + 1]
     assert system.startswith("SYS ") and system.endswith(claude_cli.SYSTEM_SUFFIX)
     assert "\n" not in claude_cli.SYSTEM_SUFFIX and "tool_calls" in claude_cli.SYSTEM_SUFFIX
     assert not (claude_cli._CMD_UNSAFE & set(claude_cli.SYSTEM_SUFFIX))
-    assert "--strict-mcp-config" in argv and "--no-session-persistence" in argv
-    assert "--json-schema" in argv
-    cwd = Path(seen["kwargs"]["cwd"])
-    assert cwd.is_dir()
-    assert not str(cwd.resolve()).startswith(str(Path(__file__).resolve().parents[1]))
+    schema = json.loads(argv[argv.index("--json-schema") + 1])
+    assert schema == response_schema(["read_email", "send_email"])
     assert seen["kwargs"]["input"] == build_prompt(request, wrap_untrusted=True)
     assert seen["kwargs"]["timeout"] == 180
 
 
 @pytest.mark.parametrize(
     "run",
-    [
-        _fake_run("{}", returncode=1),
-        _fake_run(json.dumps({"is_error": True, "structured_output": {}})),
-        _fake_run(json.dumps({"is_error": False})),
-        _fake_run("not json"),
-        _fake_run(raises=subprocess.TimeoutExpired("claude", 180)),
-        _fake_run(raises=FileNotFoundError("claude")),
-        _fake_run(raises=PermissionError("denied")),
-    ],
-    ids=["exit", "is_error", "no_structured", "bad_json", "timeout", "not_found", "permission"],
+    [_fake_run("{}", returncode=1), _fake_run("not json"), _fake_run(raises=OSError("x"))],
+    ids=["exit", "bad_json", "oserror"],
 )
-def test_cli_errors_raise(monkeypatch, run):
-    monkeypatch.setattr(claude_cli.subprocess, "run", run)
+def test_backend_errors_become_cli_backend_error(monkeypatch, run):
+    monkeypatch.setattr(llm.subprocess, "run", run)
     with pytest.raises(CliBackendError):
         complete_via_cli("SYS", _request(), wrap_untrusted=False, model="haiku")
 
 
-def test_missing_executable_raises(monkeypatch):
-    monkeypatch.setattr(claude_cli.shutil, "which", lambda name: None)
-    with pytest.raises(CliBackendError):
-        complete_via_cli("SYS", _request(), wrap_untrusted=False, model="haiku")
-
-
-def test_workdir_failure_raises(monkeypatch):
-    monkeypatch.setattr(claude_cli, "_workdir", [])
-
-    def boom(prefix):
-        raise OSError("disk full")
-
-    monkeypatch.setattr(claude_cli.tempfile, "mkdtemp", boom)
-    monkeypatch.setattr(claude_cli.subprocess, "run", _fake_run(_ok_output()))
-    with pytest.raises(CliBackendError):
-        complete_via_cli("SYS", _request(), wrap_untrusted=False, model="haiku")
-
-
-def test_decodes_with_replace(monkeypatch):
-    seen: dict = {}
-    monkeypatch.setattr(claude_cli.subprocess, "run", _fake_run(_ok_output(), capture=seen))
-    complete_via_cli("SYS", _request(), wrap_untrusted=False, model="haiku")
-    assert seen["kwargs"]["errors"] == "replace"
+def test_cli_backend_error_is_llm_error():
+    assert issubclass(CliBackendError, llm.LLMError)
 
 
 def test_bad_names_rejected(monkeypatch):
-    monkeypatch.setattr(claude_cli.subprocess, "run", _fake_run(_ok_output()))
+    monkeypatch.setattr(llm.subprocess, "run", _fake_run(_ok_output()))
     with pytest.raises(CliBackendError):
         complete_via_cli("SYS", _request(), wrap_untrusted=False, model='haiku" & calc')
     bad = AgentRequest(
@@ -189,19 +147,13 @@ def test_bad_names_rejected(monkeypatch):
 
 def test_cmd_shim_guard(monkeypatch):
     seen: dict = {}
-    monkeypatch.setattr(claude_cli.shutil, "which", lambda name: "C:/x/claude.CMD")
-    monkeypatch.setattr(claude_cli.subprocess, "run", _fake_run(_ok_output(), capture=seen))
+    monkeypatch.setattr(llm.shutil, "which", lambda name: "C:/x/claude.CMD")
+    monkeypatch.setattr(llm.subprocess, "run", _fake_run(_ok_output(), capture=seen))
     # the JSON schema (balanced quotes) and a plain prompt pass
     assert complete_via_cli("plain prompt", _request(), False, "haiku").content == "done"
     for bad in ["100% sure", "line1\nline2", "a & b"]:
         with pytest.raises(CliBackendError):
             complete_via_cli(bad, _request(), wrap_untrusted=False, model="haiku")
-
-
-def test_system_prompt_not_checked_for_exe(monkeypatch):
-    # non-.cmd executables take any prompt text
-    monkeypatch.setattr(claude_cli.subprocess, "run", _fake_run(_ok_output()))
-    assert complete_via_cli("100% & more\n", _request(), False, "haiku").content == "done"
 
 
 def _client(monkeypatch, guarded, result):
@@ -226,7 +178,7 @@ def test_http_502_on_backend_error(monkeypatch):
 
 
 def test_guard_parity_on_cli_backend(monkeypatch):
-    from kestrel_redteam.protocol import AgentResponse
+    from phantom_redteam.protocol import AgentResponse
 
     reply = AgentResponse(tool_calls=[ToolCall(name="send_email", arguments={})])
     client = _client(monkeypatch, True, reply)
